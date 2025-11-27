@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 // Para utilizar factories en el modelo se debe invocar e injectar
-use Illuminate\Database\Eloquent\Factories\hasFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Orders extends Model 

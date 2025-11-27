@@ -58,7 +58,7 @@ class OrdersController extends Controller
 
             // 4. Actualizar estado y transaction_id
             $order->update([
-                'status' => 'pagando',
+                'status' => 'pendiente',
                 'transaction_id' => 'ORDER-' . $order->order_id,
             ]);
 
@@ -151,69 +151,79 @@ class OrdersController extends Controller
     }
 
     public function checkAdamsPayStatus($orderId)
-{
-    // Buscar la orden en la BD
-    $order = Orders::find($orderId);
+    {
+        // Buscar la orden en la BD
+        $order = Orders::find($orderId);
 
-    if (!$order) {
+        if (!$order) {
+            return response()->json([
+                'message' => 'Orden no encontrada'
+            ], 404);
+        }
+
+        // Tu ID interno que enviaste a AdamsPay
+        $idDeuda = 'ORDER-' . $order->order_id;
+
+        // URL de AdamsPay
+        $apiUrl = "https://staging.adamspay.com/api/v1/debts/" . $idDeuda;
+
+        // API Key desde .env
+        $apiKey = env('ADAMSPAY_API_KEY');
+
+        // Llamada HTTP con Laravel (mucho mejor que cURL)
+        $response = Http::withHeaders([
+            'apikey' => $apiKey
+        ])->get($apiUrl);
+
+        // Si falló la petición
+        if ($response->failed()) {
+            return response()->json([
+                'message' => 'Error al consultar AdamsPay',
+                'details' => $response->json()
+            ], 500);
+        }
+
+        $data = $response->json();
+
+        // Si la API no devuelve deuda
+        if (!isset($data['debt'])) {
+            return response()->json([
+                'message' => 'No se pudo obtener información de la deuda',
+                'meta' => $data['meta'] ?? null
+            ], 404);
+        }
+
+        $debt = $data['debt'];
+
+        // Extraer datos importantes
+        $payStatus = $debt['payStatus']['status'];
+        $isPaid = $payStatus === 'paid';
+
+        // Actualizar estado en BD
+        if ($isPaid && $order->status !== 'pagado') {
+
+            $order->status = 'pagado';
+            $order->save();
+        }
+
         return response()->json([
-            'message' => 'Orden no encontrada'
-        ], 404);
+            'message' => 'Consulta realizada correctamente',
+            'order_id' => $order->id,
+            'transaction_id' => $idDeuda,
+            'estado_actual' => $order->status,
+            'pagado' => $isPaid,
+            'adams_response' => $data
+        ]);
     }
 
-    // Tu ID interno que enviaste a AdamsPay
-    $idDeuda = 'ORDER-' . $order->order_id;
-    
-    // URL de AdamsPay
-    $apiUrl = "https://staging.adamspay.com/api/v1/debts/" . $idDeuda;
+    public function getOrdersByUser($userId)
+    {
+        $orders = Orders::where('user_id', $userId)->get();
 
-    // API Key desde .env
-    $apiKey = env('ADAMSPAY_API_KEY');
-
-    // Llamada HTTP con Laravel (mucho mejor que cURL)
-    $response = Http::withHeaders([
-        'apikey' => $apiKey
-    ])->get($apiUrl);
-
-    // Si falló la petición
-    if ($response->failed()) {
         return response()->json([
-            'message' => 'Error al consultar AdamsPay',
-            'details' => $response->json()
-        ], 500);
+            'message' => 'Órdenes obtenidas correctamente',
+            'orders' => $orders
+        ]);
     }
-
-    $data = $response->json();
-
-    // Si la API no devuelve deuda
-    if (!isset($data['debt'])) {
-        return response()->json([
-            'message' => 'No se pudo obtener información de la deuda',
-            'meta' => $data['meta'] ?? null
-        ], 404);
-    }
-
-    $debt = $data['debt'];
-
-    // Extraer datos importantes
-    $payStatus = $debt['payStatus']['status'];
-    $isPaid = $payStatus === 'paid';
-
-    // Actualizar estado en BD
-    if ($isPaid && $order->status !== 'pagado') {
-
-        $order->status = 'pagado';
-        $order->save();
-    }
-
-    return response()->json([
-        'message' => 'Consulta realizada correctamente',
-        'order_id' => $order->id,
-        'transaction_id' => $idDeuda,
-        'estado_actual' => $order->status,
-        'pagado' => $isPaid,
-        'adams_response' => $data
-    ]);
-}
 
 }

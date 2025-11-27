@@ -24,6 +24,6 @@ class Books extends Model
 
     // se indica que el FK pertenece a categorias
     public function category(){
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(Category::class, 'category_id');
     }
 }

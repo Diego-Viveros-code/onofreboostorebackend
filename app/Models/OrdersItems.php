@@ -24,10 +24,10 @@ class OrdersItems extends Model
 
     // se indica que el FK pertenece a categorias
     public function books(){
-        return $this->belongsTo(Books::class);
+        return $this->belongsTo(Books::class, 'book_id');
     }
 
     public function order(){
-        return $this->belongsTo(Orders::class);
+        return $this->belongsTo(Orders::class, 'order_id');
     }
 }

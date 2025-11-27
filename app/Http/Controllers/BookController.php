@@ -15,10 +15,9 @@ class BookController extends Controller
 
     public function index(Request $request)
     {
-        $perPage = $request->query("per_page", 10);
-        $page = $request->query("page", 0);
-        $offset = $page * $perPage;
-        $books = Books::skip($offset)->take($perPage)->get();
+        $perPage = $request->query('per_page', 10);
+        $page = $request->query('page', 1);
+        $books = Books::inRandomOrder()->paginate($perPage, ['*'], 'page', $page);
         return response()->json($books);
     }
 
@@ -72,6 +71,4 @@ class BookController extends Controller
         $book->delete();
         return response()->json(["message" => "Libro eliminado"]);
     }
-
-
 }

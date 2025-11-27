@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'adamspay' => [
+        'url' => env('ADAMSPAY_API_URL'),
+        'key' => env('ADAMSPAY_API_KEY'),
+        'if_exists' => env('ADAMSPAY_IF_EXISTS', 'update'),
+    ],
+
 ];

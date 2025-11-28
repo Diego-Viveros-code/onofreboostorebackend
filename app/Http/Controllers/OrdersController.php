@@ -18,8 +18,6 @@ class OrdersController extends Controller
 {
     public function createOrder(Request $request)
     {
-        //Log::info("ORDER REQUEST:", $request->all());
-
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
             'total'   => 'required|numeric|min:0',
@@ -31,8 +29,6 @@ class OrdersController extends Controller
             'items.*.author'   => 'sometimes|string',
             'items.*.category' => 'sometimes|string',
         ]);
-
-        //DB::beginTransaction();
 
         // CREAR LA ORDEN
         $order = Orders::create([
@@ -56,18 +52,11 @@ class OrdersController extends Controller
         $payUrl = $this->createDebtInAdamsPay($order);
 
         if (!$payUrl) {
-            //throw new \Exception('Error con AdamsPay');
             return response()->json([
                 'error'   => true,
                 'message' => 'No se pudo procesar tu orden. Intenta nuevamente.',
             ], 422);
         }
-
-        // $order->update([
-        //     'transaction_id' => 'ORDEN-' . $order->order_id,
-        // ]);
-
-        // DB::commit();
 
         return response()->json([
             'message'         => 'Orden creada correctamente',
@@ -77,11 +66,6 @@ class OrdersController extends Controller
             'pay_url'         => $payUrl
         ], 201);
 
-        // --------------------------------------------------------------- //
-        //} catch (\Exception $e) {
-        //DB::rollBack();
-        //Log::error('Error orden: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-        //}
     }
 
     private function createDebtInAdamsPay($order)

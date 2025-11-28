@@ -63,9 +63,9 @@ class OrdersController extends Controller
             ], 422);
         }
 
-        $order->update([
-            'transaction_id' => 'ORDEN-' . $order->order_id,
-        ]);
+        // $order->update([
+        //     'transaction_id' => 'ORDEN-' . $order->order_id,
+        // ]);
 
         // DB::commit();
 

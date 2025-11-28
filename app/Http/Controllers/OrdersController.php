@@ -25,7 +25,7 @@ class OrdersController extends Controller
             'total'   => 'required|numeric',
             
             'items'              => 'required|array',
-            'items.*.book_id'    => 'required|integer|exists:books,id',
+            'items.*.book_id'    => 'required|integer|exists:books,book_id',
             'items.*.quantity'   => 'required|integer|min:1',
             'items.*.price'      => 'required|numeric',
             'items.*.title'      => 'sometimes|string',

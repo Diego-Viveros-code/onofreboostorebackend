@@ -12,9 +12,12 @@ class Orders extends Model
     use HasFactory, SoftDeletes;
     
     protected $table = 'orders';
-
+    
     // se indica que la clave primaria es book_id
     protected $primaryKey = 'order_id';
+    public $incrementing = true;
+    protected $keyType = 'int';
+
     
     // campos a ser llenados
     protected $fillable = ["user_id", "total", "status", "transaction_id"];

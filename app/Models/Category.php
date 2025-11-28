@@ -13,8 +13,11 @@ class Category extends Model
 
     // se indica primeramente como se llama la table en base de datos
     protected $table = 'category';
-
     protected $primaryKey = 'category_id';
+
+    public $incrementing = true;
+    protected $keyType = 'int';
+
 
     // se le indica cuales son los campos que se puede rellenar, solamente estos campos
     protected $fillable = ["name"];

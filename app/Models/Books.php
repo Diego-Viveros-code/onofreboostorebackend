@@ -14,7 +14,6 @@ class Books extends Model
     protected $table = 'books';
     protected $primaryKey = 'book_id';        
     public $incrementing = true;              
-    protected $keyType = 'int';              
     
     // campos a ser llenados
     protected $fillable = ["title", "description", "price", "cover", "category_id"];

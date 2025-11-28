@@ -16,8 +16,6 @@ class Category extends Model
     protected $primaryKey = 'category_id';
 
     public $incrementing = true;
-    protected $keyType = 'int';
-
 
     // se le indica cuales son los campos que se puede rellenar, solamente estos campos
     protected $fillable = ["name"];

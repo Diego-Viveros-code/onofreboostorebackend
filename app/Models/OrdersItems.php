@@ -13,7 +13,6 @@ class OrdersItems extends Model
 
     protected $table = 'order_items';
     public $incrementing = true;
-    protected $keyType = 'int';
 
     // se indica que la clave primaria es book_id
     protected $primaryKey = 'order_items_id';

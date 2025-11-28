@@ -16,88 +16,113 @@ use DateTime;
 
 class OrdersController extends Controller
 {
-public function createOrder(Request $request)
+    public function createOrder(Request $request)
     {
-        Log::info("ORDER REQUEST:", $request->all());
-
-        // VALIDACIÓN CORRECTA Y ACTIVA (el error anterior era aquí)
+        // QUITAMOS EL TRY-CATCH PARA VER EL ERROR REAL
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
             'total'   => 'required|numeric|min:0',
 
             'items'              => 'required|array|min:1',
-            'items.*.book_id'    => 'required|integer|exists:books,book_id', // CLAVE: book_id, no id
+            'items.*.book_id'    => 'required|integer|exists:books,book_id',
             'items.*.quantity'   => 'required|integer|min:1',
             'items.*.price'      => 'required|numeric|min:0',
 
-            // Campos extra que manda tu frontend (para que no de 422)
             'items.*.title'      => 'sometimes|string',
             'items.*.author'     => 'sometimes|string',
             'items.*.category'   => 'sometimes|string',
         ]);
 
-        DB::beginTransaction();
-
-        try {
-            // 1. Crear la orden
-            $order = Orders::create([
-                'user_id' => $validated['user_id'],
-                'total'   => $validated['total'],
-                'status'  => 'pendiente',
-            ]);
-
-            // 2. Crear los ítems de la orden (usamos precio real del libro = seguridad)
-            foreach ($validated['items'] as $item) {
-                $book = Books::findOrFail($item['book_id']);
-
-                OrdersItems::create([
-                    'order_id' => $order->order_id,    // tu PK de orders es order_id
-                    'book_id'  => $book->book_id,      // también aquí book_id
-                    'quantity' => $item['quantity'],
-                    'price'    => $book->price,        // precio de la BD, no del frontend
-                ]);
-            }
-
-            // 3. Crear deuda en AdamsPay
-            $payUrl = $this->createDebtInAdamsPay($order);
-
-            if (!$payUrl) {
-                throw new \Exception('No se pudo generar el enlace de pago en AdamsPay');
-            }
-
-            // 4. Guardar transaction_id
-            $order->update([
-                'transaction_id' => 'ORDER-' . $order->order_id,
-            ]);
-
-            DB::commit();
-
-            // Respuesta exitosa al frontend
-            return response()->json([
-                'message'         => 'Orden creada correctamente',
-                'order_id'        => $order->order_id,
-                'transaction_id'  => 'ORDER-' . $order->order_id,
-                'total'           => $order->total,
-                'status'          => $order->status,
-                'pay_url'         => $payUrl
-            ], 201);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            Log::error('Error al crear orden', [
-                'message' => $e->getMessage(),
-                'line'    => $e->getLine(),
-                'file'    => $e->getFile(),
-                'request' => $request->all(),
-            ]);
-
-            return response()->json([
-                'error'   => true,
-                'message' => 'No se pudo procesar tu orden. Intenta nuevamente.',
-            ], 422);
-        }
+        // RESPUESTA DE PRUEBA
+        return response()->json([
+            'success' => true,
+            'message' => 'VALIDACIÓN PASADA. Todo OK hasta aquí.',
+            'data' => $validated
+        ], 200);
     }
+
+// public function createOrder(Request $request)
+//     {
+//         Log::info("ORDER REQUEST:", $request->all());
+
+//         // VALIDACIÓN CORRECTA Y ACTIVA (el error anterior era aquí)
+//         $validated = $request->validate([
+//             'user_id' => 'required|exists:users,id',
+//             'total'   => 'required|numeric|min:0',
+
+//             'items'              => 'required|array|min:1',
+//             'items.*.book_id'    => 'required|integer|exists:books,book_id', // CLAVE: book_id, no id
+//             'items.*.quantity'   => 'required|integer|min:1',
+//             'items.*.price'      => 'required|numeric|min:0',
+
+//             // Campos extra que manda tu frontend (para que no de 422)
+//             'items.*.title'      => 'sometimes|string',
+//             'items.*.author'     => 'sometimes|string',
+//             'items.*.category'   => 'sometimes|string',
+//         ]);
+
+//         DB::beginTransaction();
+
+//         try {
+//             // 1. Crear la orden
+//             $order = Orders::create([
+//                 'user_id' => $validated['user_id'],
+//                 'total'   => $validated['total'],
+//                 'status'  => 'pendiente',
+//             ]);
+
+//             // 2. Crear los ítems de la orden (usamos precio real del libro = seguridad)
+//             foreach ($validated['items'] as $item) {
+//                 $book = Books::findOrFail($item['book_id']);
+
+//                 OrdersItems::create([
+//                     'order_id' => $order->order_id,    // tu PK de orders es order_id
+//                     'book_id'  => $book->book_id,      // también aquí book_id
+//                     'quantity' => $item['quantity'],
+//                     'price'    => $book->price,        // precio de la BD, no del frontend
+//                 ]);
+//             }
+
+//             // 3. Crear deuda en AdamsPay
+//             $payUrl = $this->createDebtInAdamsPay($order);
+
+//             if (!$payUrl) {
+//                 throw new \Exception('No se pudo generar el enlace de pago en AdamsPay');
+//             }
+
+//             // 4. Guardar transaction_id
+//             $order->update([
+//                 'transaction_id' => 'ORDER-' . $order->order_id,
+//             ]);
+
+//             DB::commit();
+
+//             // Respuesta exitosa al frontend
+//             return response()->json([
+//                 'message'         => 'Orden creada correctamente',
+//                 'order_id'        => $order->order_id,
+//                 'transaction_id'  => 'ORDER-' . $order->order_id,
+//                 'total'           => $order->total,
+//                 'status'          => $order->status,
+//                 'pay_url'         => $payUrl
+//             ], 201);
+
+//         } catch (\Exception $e) {
+//             DB::rollBack();
+
+//             Log::error('Error al crear orden', [
+//                 'message' => $e->getMessage(),
+//                 'line'    => $e->getLine(),
+//                 'file'    => $e->getFile(),
+//                 'request' => $request->all(),
+//             ]);
+
+//             return response()->json([
+//                 'error'   => true,
+//                 'message' => 'No se pudo procesar tu orden. Intenta nuevamente.',
+//             ], 422);
+//         }
+//     }
 
     /**
      * Crea la deuda en AdamsPay y devuelve la URL de pago

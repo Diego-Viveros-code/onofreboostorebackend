@@ -46,7 +46,7 @@ class OrdersController extends Controller
                     'order_id' => $order->order_id,
                     'book_id'  => $book->book_id,
                     'quantity' => $item['quantity'],
-                    'price'    => $book->price,
+                    'price'    => $book->price
                 ]);
             }
 

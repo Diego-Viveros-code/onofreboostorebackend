@@ -17,7 +17,7 @@ class Orders extends Model
     protected $primaryKey = 'order_id';
     
     // campos a ser llenados
-    protected $fillable = ["user_id", "total", "status", "cover"];
+    protected $fillable = ["user_id", "total", "status", "transaction_id"];
 
     // lo que se agrega en hidden no se mostrara en las solicitudes
     protected $hidden = ["created_at", "updated_at"];

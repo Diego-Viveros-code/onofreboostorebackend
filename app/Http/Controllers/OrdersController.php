@@ -19,13 +19,18 @@ class OrdersController extends Controller
     public function createOrder(Request $request)
     {
         Log::info("ORDER REQUEST:", $request->all());
-        
+
         $request->validate([
-            'user_id' => 'required|integer|exists:users,id',
-            'total'   => 'required|numeric|min:0.01',
-            'items'   => 'required|array|min:1',
-            // 'items.*.book_id'  => 'required|integer|exists:books,book_id',
-            // 'items.*.quantity' => 'required|integer|min:1',
+            'user_id' => 'required|exists:users,id',
+            'total'   => 'required|numeric',
+            
+            'items'              => 'required|array',
+            'items.*.book_id'    => 'required|integer|exists:books,id',
+            'items.*.quantity'   => 'required|integer|min:1',
+            'items.*.price'      => 'required|numeric',
+            'items.*.title'      => 'sometimes|string',
+            'items.*.author'     => 'sometimes|string',
+            'items.*.category'   => 'sometimes|string',
         ]);
 
         DB::beginTransaction();

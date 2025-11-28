@@ -18,6 +18,8 @@ class OrdersController extends Controller
 {
     public function createOrder(Request $request)
     {
+
+      
         $request->validate([
             'user_id' => 'required|integer|exists:users,id',
             'total'   => 'required|numeric|min:0.01',
@@ -26,6 +28,24 @@ class OrdersController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
         ]);
 
+        $order = Orders::create([
+            'user_id' => $request->user_id,
+            'total'   => $request->total,
+            'status'  => 'pendiente',
+        ]);
+
+        // 2. Crear los ítems de la orden
+        foreach ($request->items as $item) {
+            $book = Books::findOrFail($item['book_id']);
+
+            OrdersItems::create([
+                'order_id' => $order->order_id,
+                'book_id'  => $book->book_id,
+                'quantity' => $item['quantity'],
+                'price'    => $book->price,
+            ]);
+        }
+  
 
         DB::beginTransaction();
 
@@ -225,5 +245,4 @@ class OrdersController extends Controller
             'orders' => $orders
         ]);
     }
-
 }

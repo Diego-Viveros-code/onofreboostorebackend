@@ -18,7 +18,8 @@ class OrdersController extends Controller
 {
     public function createOrder(Request $request)
     {
-
+        Log::info("ORDER REQUEST:", $request->all());
+        
         $request->validate([
             'user_id' => 'required|integer|exists:users,id',
             'total'   => 'required|numeric|min:0.01',

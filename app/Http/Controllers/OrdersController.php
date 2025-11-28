@@ -41,47 +41,52 @@ class OrdersController extends Controller
             'status'  => 'pendiente',
         ]);
 
-        //try {
-            foreach ($validated['items'] as $item) {
-                $book = Books::findOrFail($item['book_id']);
+        foreach ($validated['items'] as $item) {
+            $book = Books::findOrFail($item['book_id']);
 
-                OrdersItems::create([
-                    'order_items_id' => $order->order_id,   
-                    'book_id'  => $book->book_id,
-                    'quantity' => $item['quantity'],
-                    'price'    => $book->price,      
-                ]);
-            }
-
-            // ADAMSPAY
-            $payUrl = $this->createDebtInAdamsPay($order);
-
-            if (!$payUrl) {
-                throw new \Exception('Error con AdamsPay');
-            }
-
-            $order->update([
-                'transaction_id' => 'ORDEN-' . $order->order_id,
+            OrdersItems::create([
+                'order_id' => $order->order_id,
+                'book_id'  => $book->book_id,
+                'quantity' => $item['quantity'],
+                'price'    => $book->price,
             ]);
+        }
 
-            //DB::commit();
+        return response()->json([
+            'message' => 'Creado correctamente',
+        ], 201);
 
-            return response()->json([
-                'message'         => 'Orden creada correctamente',
-                'order_id'         => $order->order_id,
-                'transaction_id'  => 'ORDER-' . $order->order_id,
-                'total'           => $order->total,
-                'pay_url'         => $payUrl
-            ], 201);
+        // ADAMSPAY
+        // $payUrl = $this->createDebtInAdamsPay($order);
 
+        // if (!$payUrl) {
+        //     throw new \Exception('Error con AdamsPay');
+        // }
+
+        // $order->update([
+        //     'transaction_id' => 'ORDEN-' . $order->order_id,
+        // ]);
+
+        //DB::commit();
+
+        // return response()->json([
+        //     'message'         => 'Orden creada correctamente',
+        //     'order_id'         => $order->order_id,
+        //     'transaction_id'  => 'ORDER-' . $order->order_id,
+        //     'total'           => $order->total,
+        //     'pay_url'         => $payUrl
+        // ], 201);
+
+
+        // --------------------------------------------------------------- //
         //} catch (\Exception $e) {
-            //DB::rollBack();
-            //Log::error('Error orden: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        //DB::rollBack();
+        //Log::error('Error orden: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
-            // return response()->json([
-            //     'error'   => true,
-            //     'message' => 'No se pudo procesar tu orden. Intenta nuevamente.',
-            // ], 422);
+        // return response()->json([
+        //     'error'   => true,
+        //     'message' => 'No se pudo procesar tu orden. Intenta nuevamente.',
+        // ], 422);
         //}
     }
 

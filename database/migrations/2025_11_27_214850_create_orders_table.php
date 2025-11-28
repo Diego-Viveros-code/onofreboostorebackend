@@ -12,7 +12,7 @@ return new class extends Migration
         Schema::create('orders', function (Blueprint $table) {
 
             // Primary key
-            $table->integer('order_id')->primary();
+            $table->bigIncrements('order_id');
 
             // Foreign user
             $table->integer('user_id')->nullable(false);

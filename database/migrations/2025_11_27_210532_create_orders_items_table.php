@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('order_items', function (Blueprint $table) {
             // Primary key
-            $table->integer('order_items_id')->primary();
-
+            $table->bigIncrements('order_items_id');
+            
             // Foreign-like columns
             $table->integer('order_id')->nullable(false);
             $table->integer('book_id')->nullable(false);

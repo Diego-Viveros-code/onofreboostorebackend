@@ -52,41 +52,35 @@ class OrdersController extends Controller
             ]);
         }
 
+        //ADAMSPAY
+        $payUrl = $this->createDebtInAdamsPay($order);
+
+        if (!$payUrl) {
+            //throw new \Exception('Error con AdamsPay');
+            return response()->json([
+                'error'   => true,
+                'message' => 'No se pudo procesar tu orden. Intenta nuevamente.',
+            ], 422);
+        }
+
+        $order->update([
+            'transaction_id' => 'ORDEN-' . $order->order_id,
+        ]);
+
+        // DB::commit();
+
         return response()->json([
-            'message' => 'Creado correctamente',
+            'message'         => 'Orden creada correctamente',
+            'order_id'         => $order->order_id,
+            'transaction_id'  => 'ORDER-' . $order->order_id,
+            'total'           => $order->total,
+            'pay_url'         => $payUrl
         ], 201);
-
-        // ADAMSPAY
-        // $payUrl = $this->createDebtInAdamsPay($order);
-
-        // if (!$payUrl) {
-        //     throw new \Exception('Error con AdamsPay');
-        // }
-
-        // $order->update([
-        //     'transaction_id' => 'ORDEN-' . $order->order_id,
-        // ]);
-
-        //DB::commit();
-
-        // return response()->json([
-        //     'message'         => 'Orden creada correctamente',
-        //     'order_id'         => $order->order_id,
-        //     'transaction_id'  => 'ORDER-' . $order->order_id,
-        //     'total'           => $order->total,
-        //     'pay_url'         => $payUrl
-        // ], 201);
-
 
         // --------------------------------------------------------------- //
         //} catch (\Exception $e) {
         //DB::rollBack();
         //Log::error('Error orden: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-
-        // return response()->json([
-        //     'error'   => true,
-        //     'message' => 'No se pudo procesar tu orden. Intenta nuevamente.',
-        // ], 422);
         //}
     }
 

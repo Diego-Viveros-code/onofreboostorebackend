@@ -24,8 +24,8 @@ class OrdersController extends Controller
             'user_id' => 'required|integer|exists:users,id',
             'total'   => 'required|numeric|min:0.01',
             'items'   => 'required|array|min:1',
-            'items.*.book_id'  => 'required|integer|exists:books,book_id',
-            'items.*.quantity' => 'required|integer|min:1',
+            // 'items.*.book_id'  => 'required|integer|exists:books,book_id',
+            // 'items.*.quantity' => 'required|integer|min:1',
         ]);
 
         DB::beginTransaction();

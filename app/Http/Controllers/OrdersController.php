@@ -20,17 +20,29 @@ class OrdersController extends Controller
     {
         Log::info("ORDER REQUEST:", $request->all());
 
+        // $request->validate([
+        //     'user_id' => 'required|exists:users,id',
+        //     'total'   => 'required|numeric',
+
+        //     'items'              => 'required|array',
+        //     'items.*.book_id'    => 'required|integer|exists:books,book_id',
+        //     'items.*.quantity'   => 'required|integer|min:1',
+        //     'items.*.price'      => 'required|numeric',
+        //     'items.*.title'      => 'sometimes|string',
+        //     'items.*.author'     => 'sometimes|string',
+        //     'items.*.category'   => 'sometimes|string',
+        // ]);
+
         $request->validate([
-            'user_id' => 'required|exists:users,id',
+            'user_id' => 'required|integer',
             'total'   => 'required|numeric',
-            
-            'items'              => 'required|array',
-            'items.*.book_id'    => 'required|integer|exists:books,book_id',
-            'items.*.quantity'   => 'required|integer|min:1',
-            'items.*.price'      => 'required|numeric',
-            'items.*.title'      => 'sometimes|string',
-            'items.*.author'     => 'sometimes|string',
-            'items.*.category'   => 'sometimes|string',
+            'items'   => 'required|array',
+            'items.*.book_id'  => 'required|integer',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.price'    => 'required|numeric',
+            'items.*.title'    => 'sometimes|string',
+            'items.*.author'   => 'sometimes|string',
+            'items.*.category' => 'sometimes|string',
         ]);
 
         DB::beginTransaction();

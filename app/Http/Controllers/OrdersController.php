@@ -46,10 +46,10 @@ class OrdersController extends Controller
                 $book = Books::findOrFail($item['book_id']);
 
                 OrdersItems::create([
-                    'order_id' => $order->order_id,   // ahora SÍ tiene valor
+                    'order_items_id' => $order->order_id,   
                     'book_id'  => $book->book_id,
                     'quantity' => $item['quantity'],
-                    'price'    => $book->price,       // precio real = seguridad
+                    'price'    => $book->price,      
                 ]);
             }
 

@@ -61,7 +61,7 @@ class OrdersController extends Controller
         return response()->json([
             'message'         => 'Orden creada correctamente',
             'order_id'         => $order->order_id,
-            'transaction_id'  => 'ORDER-' . $order->order_id,
+            'transaction_id'  => 'ORDEN-' . $order->order_id,
             'total'           => $order->total,
             'pay_url'         => $payUrl
         ], 201);
@@ -138,7 +138,7 @@ class OrdersController extends Controller
         }
 
         // Tu ID interno que enviaste a AdamsPay
-        $idDeuda = 'ORDER-' . $order->order_id;
+        $idDeuda = 'ORDEN-' . $order->order_id;
 
         // URL de AdamsPay
         $apiUrl = "https://staging.adamspay.com/api/v1/debts/" . $idDeuda;

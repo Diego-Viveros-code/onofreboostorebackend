@@ -18,8 +18,6 @@ class OrdersController extends Controller
 {
     public function createOrder(Request $request)
     {
-        //Log::info("ORDER REQUEST:", $request->all());
-
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
             'total'   => 'required|numeric|min:0',
@@ -32,7 +30,7 @@ class OrdersController extends Controller
             'items.*.category' => 'sometimes|string',
         ]);
 
-        //DB::beginTransaction();
+        DB::beginTransaction();
 
         // CREAR LA ORDEN
         $order = Orders::create([
@@ -41,65 +39,47 @@ class OrdersController extends Controller
             'status'  => 'pendiente',
         ]);
 
-        if (!$order) {
+        try {
+            foreach ($validated['items'] as $item) {
+                $book = Books::findOrFail($item['book_id']);
+
+                OrdersItems::create([
+                    'order_id' => $order->order_id,   // ahora SÍ tiene valor
+                    'book_id'  => $book->book_id,
+                    'quantity' => $item['quantity'],
+                    'price'    => $book->price,       // precio real = seguridad
+                ]);
+            }
+
+            // ADAMSPAY
+            $payUrl = $this->createDebtInAdamsPay($order);
+
+            if (!$payUrl) {
+                throw new \Exception('Error con AdamsPay');
+            }
+
+            $order->update([
+                'transaction_id' => 'ORDEN-' . $order->order_id,
+            ]);
+
+            DB::commit();
+
             return response()->json([
-                'message' => 'Orden no encontrada'
-            ], 404);
-        } else {
-            return response()->json([
-                'message' => 'Orden creada'
+                'message'         => 'Orden creada correctamente',
+                'order_id'         => $order->order_id,
+                'transaction_id'  => 'ORDER-' . $order->order_id,
+                'total'           => $order->total,
+                'pay_url'         => $payUrl
             ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error orden: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
+            return response()->json([
+                'error'   => true,
+                'message' => 'No se pudo procesar tu orden. Intenta nuevamente.',
+            ], 422);
         }
-
-        // FORZAR QUE LARAVEL TRAIGA EL order_id DE POSTGRES
-
-        //try {
-
-        //     $order->refresh(); // ← LÍNEA MÁGICA
-        //    Log::info('ORDER CREADA CON ID:', ['order_id' => $order->order_id]);
-
-        /*---------------------------------------------------------------------------- */
-        // CREAR LOS ITEMS
-        //     foreach ($validated['items'] as $item) {
-        //         $book = Books::findOrFail($item['book_id']);
-
-        //         OrdersItems::create([
-        //             'order_id' => $order->order_id,   // ahora SÍ tiene valor
-        //             'book_id'  => $book->book_id,
-        //             'quantity' => $item['quantity'],
-        //             'price'    => $book->price,       // precio real = seguridad
-        //         ]);
-        //     }
-
-        //     // ADAMSPAY
-        //     $payUrl = $this->createDebtInAdamsPay($order);
-
-        //     if (!$payUrl) {
-        //         throw new \Exception('Error con AdamsPay');
-        //     }
-
-        //     $order->update([
-        //         'transaction_id' => 'ORDER-' . $order->order_id,
-        //     ]);
-
-        //     DB::commit();
-
-        //     return response()->json([
-        //         'message'         => 'Orden creada correctamente',
-        //         'order_id'         => $order->order_id,
-        //         'transaction_id'  => 'ORDER-' . $order->order_id,
-        //         'total'           => $order->total,
-        //         'pay_url'         => $payUrl
-        //     ], 201);
-        // } catch (\Exception $e) {
-        //     DB::rollBack();
-        //     Log::error('Error orden: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-
-        //     return response()->json([
-        //         'error'   => true,
-        //         'message' => 'No se pudo procesar tu orden. Intenta nuevamente.',
-        //     ], 422);
-        // }
     }
 
     private function createDebtInAdamsPay($order)

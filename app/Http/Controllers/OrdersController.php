@@ -20,7 +20,7 @@ class OrdersController extends Controller
 public function webhook(Request $request)
     {
         // -------------------------------------------
-        // 1. Log del raw body (útil para debug)
+        // 1. Log del raw body
         // -------------------------------------------
         $rawBody = $request->getContent();
         Log::info("Webhook RAW Body:", ['body' => $rawBody]);
@@ -35,7 +35,7 @@ public function webhook(Request $request)
             return response()->json(['error' => 'Signature missing'], 400);
         }
 
-        // Secret provisto por AdamsPay (poner en .env)
+        // Secret provisto por AdamsPay
         $secret = env('ADAMSPAY_SECRET');
 
         $computed = "sha256=" . hash_hmac("sha256", $rawBody, $secret);

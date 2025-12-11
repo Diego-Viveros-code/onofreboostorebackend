@@ -8,10 +8,12 @@ use App\Http\Controllers\OrdersController;
 use App\Http\Middleware\CheckValueInHeader;
 use App\Http\Middleware\LogRequests;
 use App\Http\Middleware\UppercaseName;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/test', function () {
-    return "Simple GET test";
+Route::get('/test-log', function () {
+    Log::info("🚀 Prueba de log a Railway");
+    return "ok";
 });
 
 //------------------------- FILTROS Y BUSQUEDAS ------------------------- //

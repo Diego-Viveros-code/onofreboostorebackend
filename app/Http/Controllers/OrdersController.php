@@ -17,54 +17,102 @@ use DateTime;
 class OrdersController extends Controller
 {
 
-    public function webhook(Request $request)
+public function webhook(Request $request)
     {
-        // AdamsPay envía un JSON dentro de "debt"
+        // -------------------------------------------
+        // 1. Log del raw body (útil para debug)
+        // -------------------------------------------
+        $rawBody = $request->getContent();
+        Log::info("Webhook RAW Body:", ['body' => $rawBody]);
+
+        // -------------------------------------------
+        // 2. Validación HMAC de AdamsPay
+        // -------------------------------------------
+        $signature = $request->header('X-AdamsPay-Signature');
+
+        if (!$signature) {
+            Log::warning("Webhook sin firma HMAC");
+            return response()->json(['error' => 'Signature missing'], 400);
+        }
+
+        // Secret provisto por AdamsPay (poner en .env)
+        $secret = env('ADAMSPAY_SECRET');
+
+        $computed = "sha256=" . hash_hmac("sha256", $rawBody, $secret);
+
+        if (!hash_equals($signature, $computed)) {
+            Log::error("Firma HMAC inválida", [
+                'received' => $signature,
+                'expected' => $computed
+            ]);
+
+            // 401 → AdamsPay volverá a reintentar
+            return response()->json(['error' => 'Invalid signature'], 401);
+        }
+
+        // -------------------------------------------
+        // 3. Parsear payload
+        // -------------------------------------------
         $payload = $request->all();
+        Log::info("Webhook JSON parseado:", $payload);
 
-        Log::info("Webhook recibido de AdamsPay", $payload);
+        // AdamsPay siempre envía dentro de "data"
+        if (!isset($payload["data"]["docId"]) ||
+            !isset($payload["data"]["payStatus"]["status"])) {
 
-        // Validación básica
-        if (!isset($payload["debt"]["docId"]) || !isset($payload["debt"]["payStatus"]["status"])) {
-            Log::warning("Webhook inválido recibido", $payload);
+            Log::error("Formato incorrecto recibido", $payload);
             return response()->json(['error' => 'Bad format'], 400);
         }
 
-        $docId = $payload["debt"]["docId"]; // Ej: ORDEN-25
-        $statusAdams = $payload["debt"]["payStatus"]["status"]; // paid, expired, pending, refunded...
+        $docId = $payload["data"]["docId"]; // Ej: ORDEN-25
+        $estadoAdams = $payload["data"]["payStatus"]["status"]; // paid, pending, etc.
 
-        // Extraer el ID real de la orden
-        // De ORDEN-25 → 25
+        // -------------------------------------------
+        // 4. Obtener ID real de la orden
+        // -------------------------------------------
         $orderId = intval(str_replace("ORDEN-", "", $docId));
-
         $order = Orders::find($orderId);
 
         if (!$order) {
-            Log::error("Orden no encontrada para Webhook: " . $docId);
+            Log::error("Orden no encontrada para ID: $docId");
+            // 404 hará que AdamsPay reintente más tarde
             return response()->json(['error' => 'Order not found'], 404);
         }
 
-        // Mapeo de estados de AdamsPay a tu sistema
-        $nuevoEstado = match ($statusAdams) {
+        // -------------------------------------------
+        // 5. Convertir estado de AdamsPay a tu sistema
+        // -------------------------------------------
+        $estadoLocal = match ($estadoAdams) {
             'paid'      => 'pagado',
             'expired'   => 'vencido',
             'pending'   => 'pendiente',
-            default     => 'pendiente',
+            'refunded'  => 'reembolsado',
+            default     => 'pendiente'
         };
 
-        // Actualizar estado solo si cambió
-        if ($order->status !== $nuevoEstado) {
-            $order->status = $nuevoEstado;
+        // -------------------------------------------
+        // 6. Actualizar solo si cambió
+        // -------------------------------------------
+        if ($order->status !== $estadoLocal) {
+            $order->status = $estadoLocal;
             $order->save();
-            Log::info("Orden {$order->order_id} actualizada a: {$nuevoEstado}");
+
+            Log::info("Orden actualizada correctamente", [
+                'order_id' => $order->order_id,
+                'nuevo_estado' => $estadoLocal
+            ]);
+        } else {
+            Log::info("Webhook recibido pero estado no cambió", [
+                'order_id' => $order->order_id,
+                'estado_actual' => $order->status
+            ]);
         }
 
-        // Puedes enviar un broadcast aquí si deseas notificar a Angular en tiempo real
-        // event(new OrderUpdatedEvent($order->order_id, $nuevoEstado));
-
-        return response()->json(['success' => true]);
+        // -------------------------------------------
+        // 7. Respuesta correcta
+        // -------------------------------------------
+        return response()->json(['success' => true], 200);
     }
-
 
     public function createOrder(Request $request)
     {

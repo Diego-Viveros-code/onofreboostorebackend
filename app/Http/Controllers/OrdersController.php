@@ -31,8 +31,8 @@ class OrdersController extends Controller
             return response()->json(['error' => 'Bad format'], 400);
         }
 
-        $docId = $payload["debt"]["docId"]; // ORDEN-39
-        $estadoAdams = $payload["debt"]["payStatus"]["status"]; // paid, pending, etc.
+        $docId = $payload["debt"]["docId"];
+        $estadoAdams = $payload["debt"]["payStatus"]["status"]; // Ej: paid, pending, expired, refunded, etc.
 
         // 3. Obtener ID real de la orden
         $orderId = intval(str_replace("ORDEN-", "", $docId));
@@ -43,23 +43,79 @@ class OrdersController extends Controller
             return response()->json(['error' => 'Order not found'], 404);
         }
 
-        // 4. Actualizar solo si el pago está completado
-        if ($estadoAdams === 'paid' && $order->status !== 'pagado') {
-            $order->status = 'pagado';
+        // 4. Conversión de estado Adams → tu estado interno
+        $estadoLocal = match ($estadoAdams) {
+            'paid'      => 'pagado',
+            'pending'   => 'pendiente',
+            'canceled'  => 'cancelado',
+            default     => $estadoAdams // por si agregan nuevos estados
+        };
+
+        // 5. Actualizar si el estado cambió
+        if ($order->status !== $estadoLocal) {
+
+            $estadoAnterior = $order->status;
+            $order->status = $estadoLocal;
             $order->save();
 
-            Log::info("Orden marcada como pagada automáticamente", [
-                'order_id' => $order->order_id
+            Log::info("Estado actualizado por Webhook", [
+                'order_id' => $order->order_id,
+                'estado_anterior' => $estadoAnterior,
+                'nuevo_estado' => $estadoLocal
             ]);
         } else {
-            Log::info("Webhook recibido pero no es 'paid' o estado ya actualizado", [
+            Log::info("Webhook recibido sin cambios en el estado", [
                 'order_id' => $order->order_id,
-                'estado_actual' => $order->status
+                'estado' => $order->status
             ]);
         }
 
         return response()->json(['success' => true], 200);
     }
+
+    // public function webhook(Request $request)
+    // {
+    //     // 1. Log del raw body para depuración
+    //     $rawBody = $request->getContent();
+    //     Log::info("Webhook RAW Body:", ['body' => $rawBody]);
+
+    //     // 2. Parsear payload JSON
+    //     $payload = json_decode($rawBody, true);
+
+    //     if (!isset($payload["debt"]["docId"]) || !isset($payload["debt"]["payStatus"]["status"])) {
+    //         Log::error("Formato incorrecto recibido", $payload);
+    //         return response()->json(['error' => 'Bad format'], 400);
+    //     }
+
+    //     $docId = $payload["debt"]["docId"]; // ORDEN-39
+    //     $estadoAdams = $payload["debt"]["payStatus"]["status"]; // paid, pending, etc.
+
+    //     // 3. Obtener ID real de la orden
+    //     $orderId = intval(str_replace("ORDEN-", "", $docId));
+    //     $order = Orders::find($orderId);
+
+    //     if (!$order) {
+    //         Log::error("Orden no encontrada para ID: $docId");
+    //         return response()->json(['error' => 'Order not found'], 404);
+    //     }
+
+    //     // 4. Actualizar solo si el pago está completado
+    //     if ($estadoAdams === 'paid' && $order->status !== 'pagado') {
+    //         $order->status = 'pagado';
+    //         $order->save();
+
+    //         Log::info("Orden marcada como pagada automáticamente", [
+    //             'order_id' => $order->order_id
+    //         ]);
+    //     } else {
+    //         Log::info("Webhook recibido pero no es 'paid' o estado ya actualizado", [
+    //             'order_id' => $order->order_id,
+    //             'estado_actual' => $order->status
+    //         ]);
+    //     }
+
+    //     return response()->json(['success' => true], 200);
+    // }
 
     public function createOrder(Request $request)
     {

@@ -16,6 +16,56 @@ use DateTime;
 
 class OrdersController extends Controller
 {
+
+    public function webhook(Request $request)
+    {
+        // AdamsPay envía un JSON dentro de "debt"
+        $payload = $request->all();
+
+        Log::info("Webhook recibido de AdamsPay", $payload);
+
+        // Validación básica
+        if (!isset($payload["debt"]["docId"]) || !isset($payload["debt"]["payStatus"]["status"])) {
+            Log::warning("Webhook inválido recibido", $payload);
+            return response()->json(['error' => 'Bad format'], 400);
+        }
+
+        $docId = $payload["debt"]["docId"]; // Ej: ORDEN-25
+        $statusAdams = $payload["debt"]["payStatus"]["status"]; // paid, expired, pending, refunded...
+
+        // Extraer el ID real de la orden
+        // De ORDEN-25 → 25
+        $orderId = intval(str_replace("ORDEN-", "", $docId));
+
+        $order = Orders::find($orderId);
+
+        if (!$order) {
+            Log::error("Orden no encontrada para Webhook: " . $docId);
+            return response()->json(['error' => 'Order not found'], 404);
+        }
+
+        // Mapeo de estados de AdamsPay a tu sistema
+        $nuevoEstado = match ($statusAdams) {
+            'paid'      => 'pagado',
+            'expired'   => 'vencido',
+            'pending'   => 'pendiente',
+            default     => 'pendiente',
+        };
+
+        // Actualizar estado solo si cambió
+        if ($order->status !== $nuevoEstado) {
+            $order->status = $nuevoEstado;
+            $order->save();
+            Log::info("Orden {$order->order_id} actualizada a: {$nuevoEstado}");
+        }
+
+        // Puedes enviar un broadcast aquí si deseas notificar a Angular en tiempo real
+        // event(new OrderUpdatedEvent($order->order_id, $nuevoEstado));
+
+        return response()->json(['success' => true]);
+    }
+
+
     public function createOrder(Request $request)
     {
         $validated = $request->validate([
@@ -65,7 +115,6 @@ class OrdersController extends Controller
             'total'           => $order->total,
             'pay_url'         => $payUrl
         ], 201);
-
     }
 
     private function createDebtInAdamsPay($order)

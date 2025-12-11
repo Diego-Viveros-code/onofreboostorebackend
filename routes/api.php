@@ -31,8 +31,11 @@ Route::apiResource("/books", BookController::class)->middleware([LogRequests::cl
 // crear orden
 Route::post('/order/create-order', [OrdersController::class, 'createOrder']);
 
-// verificar pago
+// verificar pago (sin webhook)
 Route::get('/order/{order_id}/check-status', [OrdersController::class, 'checkAdamsPayStatus']);
+
+// verificar pago (webhook)
+Route::post('/adamspay/webhook', [OrdersController::class, 'webhook']);
 
 // trae todas las ordenes del usuario tal
 Route::get('/order/user/{user_id}', [OrdersController::class, 'getOrdersByUser']);

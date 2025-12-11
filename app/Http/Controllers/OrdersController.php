@@ -17,50 +17,49 @@ use DateTime;
 class OrdersController extends Controller
 {
 
-public function webhook(Request $request)
-{
-    // 1. Log del raw body para depuración
-    $rawBody = $request->getContent();
-    Log::info("Webhook RAW Body:", ['body' => $rawBody]);
+    public function webhook(Request $request)
+    {
+        // 1. Log del raw body para depuración
+        $rawBody = $request->getContent();
+        Log::info("Webhook RAW Body:", ['body' => $rawBody]);
 
-    // 2. Parsear payload JSON
-    $payload = json_decode($rawBody, true);
+        // 2. Parsear payload JSON
+        $payload = json_decode($rawBody, true);
 
-    if (!isset($payload["debt"]["docId"]) || !isset($payload["debt"]["payStatus"]["status"])) {
-        Log::error("Formato incorrecto recibido", $payload);
-        return response()->json(['error' => 'Bad format'], 400);
+        if (!isset($payload["debt"]["docId"]) || !isset($payload["debt"]["payStatus"]["status"])) {
+            Log::error("Formato incorrecto recibido", $payload);
+            return response()->json(['error' => 'Bad format'], 400);
+        }
+
+        $docId = $payload["debt"]["docId"]; // ORDEN-39
+        $estadoAdams = $payload["debt"]["payStatus"]["status"]; // paid, pending, etc.
+
+        // 3. Obtener ID real de la orden
+        $orderId = intval(str_replace("ORDEN-", "", $docId));
+        $order = Orders::find($orderId);
+
+        if (!$order) {
+            Log::error("Orden no encontrada para ID: $docId");
+            return response()->json(['error' => 'Order not found'], 404);
+        }
+
+        // 4. Actualizar solo si el pago está completado
+        if ($estadoAdams === 'paid' && $order->status !== 'pagado') {
+            $order->status = 'pagado';
+            $order->save();
+
+            Log::info("Orden marcada como pagada automáticamente", [
+                'order_id' => $order->order_id
+            ]);
+        } else {
+            Log::info("Webhook recibido pero no es 'paid' o estado ya actualizado", [
+                'order_id' => $order->order_id,
+                'estado_actual' => $order->status
+            ]);
+        }
+
+        return response()->json(['success' => true], 200);
     }
-
-    $docId = $payload["debt"]["docId"]; // Ej: ORDEN-25
-    $estadoAdams = $payload["debt"]["payStatus"]["status"]; // paid, pending, etc.
-
-    // 3. Obtener ID real de la orden
-    $orderId = intval(str_replace("ORDEN-", "", $docId));
-    $order = Orders::find($orderId);
-
-    if (!$order) {
-        Log::error("Orden no encontrada para ID: $docId");
-        return response()->json(['error' => 'Order not found'], 404);
-    }
-
-    // 4. Actualizar solo si el pago está completado
-    if ($estadoAdams === 'paid' && $order->status !== 'pagado') {
-        $order->status = 'pagado';
-        $order->save();
-
-        Log::info("Orden marcada como pagada automáticamente", [
-            'order_id' => $order->order_id
-        ]);
-    } else {
-        Log::info("Webhook recibido pero no es 'paid' o estado ya actualizado", [
-            'order_id' => $order->order_id,
-            'estado_actual' => $order->status
-        ]);
-    }
-
-    return response()->json(['success' => true], 200);
-}
-
 
     public function createOrder(Request $request)
     {
@@ -191,7 +190,7 @@ public function webhook(Request $request)
         // API Key desde .env
         $apiKey = env('ADAMSPAY_API_KEY');
 
-        // Llamada HTTP con Laravel (mucho mejor que cURL)
+        // Llamada HTTP con Laravel
         $response = Http::withHeaders([
             'apikey' => $apiKey
         ])->get($apiUrl);
@@ -220,22 +219,17 @@ public function webhook(Request $request)
         $payStatus = $debt['payStatus']['status'];
         $isPaid = $payStatus === 'paid';
 
-        // Actualizar estado en BD
-        if ($isPaid && $order->status !== 'pagado') {
-
-            $order->status = 'pagado';
-            $order->save();
-        }
-
+        // Solo corrobora, no actualiza la BD
         return response()->json([
             'message' => 'Consulta realizada correctamente',
             'order_id' => $order->id,
             'transaction_id' => $idDeuda,
-            'estado_actual' => $order->status,
+            'estado_actual' => $order->status, // estado que ya tiene en la BD
             'pagado' => $isPaid,
             'adams_response' => $data
         ]);
     }
+
 
     public function getOrdersByUser($userId)
     {
